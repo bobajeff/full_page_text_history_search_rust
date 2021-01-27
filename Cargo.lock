@@ -486,6 +486,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "chromiumoxide",
+ "futures",
  "reqwest",
  "tokio",
 ]
