@@ -1,4 +1,13 @@
+use futures::StreamExt;
+use std::fs;
+
 use chromiumoxide::Page;
+use chromiumoxide_cdp::cdp::js_protocol::runtime::{EventBindingCalled, AddBindingParams};
+
+async fn get_eval_string()  -> Result<String, Box<dyn std::error::Error>>{
+    let return_string = fs::read_to_string("evaluate_script.js")?;
+    Ok(return_string)
+}
 
 pub async fn page_ops(page: Page) -> Result<(), Box<dyn std::error::Error>> {
     let title = page.get_title().await?;
@@ -8,5 +17,26 @@ pub async fn page_ops(page: Page) -> Result<(), Box<dyn std::error::Error>> {
         }
         None => {}
     }
+
+    //Extract text from pages
+    let _ = page.execute(AddBindingParams::new("addToText")).await;
+    let mut events = page.event_listener::<EventBindingCalled>().await?;
+    async_std::task::spawn(async move {
+        while let Some(event) = events.next().await {
+            let v: serde_json::Value = serde_json::from_str(&event.payload).expect("msg");
+            let array_of_strings = &v["args"][0].as_array().unwrap();
+            let mut text = "".to_string();
+            for string in array_of_strings.iter()
+            {
+                text += string.as_str().unwrap();
+            }
+            println!("\x1b[0;33m{}\x1b[0m", text); //print text (in orange text) to console
+        }
+    });
+
+    let eval_script = get_eval_string().await?;
+    
+    let _ = page.evaluate(eval_script).await;
+
     Ok(())
 }

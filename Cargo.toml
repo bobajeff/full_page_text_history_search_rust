@@ -10,6 +10,8 @@ edition = "2018"
 async-std = "1.9.0"
 # Use my experimental branch of chromiumoxide
 chromiumoxide = { path = "custom_deps/chromiumoxide" }
+chromiumoxide_cdp = { path = "custom_deps/chromiumoxide/chromiumoxide_cdp" }
 futures = "0.3.12"
 reqwest = {version = "0.11.0", features = ["json"]}
+serde_json = "1.0.61"
 tokio = {version = "1.1.0", features = ["full"]}
