@@ -3,10 +3,9 @@ use full_page_text_history_search::get_ws_url;
 use futures::StreamExt;
 use chromiumoxide::browser::Browser;
 
-#[async_std::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+pub async fn connect_to_browser() -> Result<(), Box<dyn std::error::Error>> {
     let debug_ws_url = get_ws_url().await?;
-    // println!("{}", debug_ws_url);
     let (browser, mut handler) = Browser::connect(debug_ws_url).await?;
 
     let handle = async_std::task::spawn(async move {
@@ -36,5 +35,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     handle.await;
+    Ok(())
+}
+
+#[async_std::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    connect_to_browser().await?;
     Ok(())
 }
