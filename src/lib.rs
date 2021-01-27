@@ -1,14 +1,17 @@
-use std::collections::HashMap;
-use chromiumoxide::browser::Browser;
+use chromiumoxide::{browser::Browser, Page};
 use futures::StreamExt;
+use std::collections::HashMap;
 
 pub async fn get_ws_url() -> Result<std::string::String, Box<dyn std::error::Error>> {
-    let web_socket_debugger_url = std::thread::spawn(|| {//Keep tokio from panicing if run from a existing tokio runtime
+    let web_socket_debugger_url = std::thread::spawn(|| {
+        //Keep tokio from panicing if run from a existing tokio runtime
         let web_socket_debugger_url = tokio::runtime::Runtime::new() //Keep reqwest from panicking if run without a tokio runtime
             .unwrap()
             .block_on(async { wrap_in_result_function().await.unwrap_or_default() });
-            web_socket_debugger_url
-    }).join().expect("Thread panicked");
+        web_socket_debugger_url
+    })
+    .join()
+    .expect("Thread panicked");
     Ok(web_socket_debugger_url)
 }
 
@@ -19,6 +22,17 @@ async fn wrap_in_result_function() -> Result<std::string::String, Box<dyn std::e
         .await?;
     let web_socket_debugger_url = resp["webSocketDebuggerUrl"].clone();
     Ok(web_socket_debugger_url)
+}
+
+async fn page_ops(page: Page) -> Result<(), Box<dyn std::error::Error>> {
+    let title = page.get_title().await?;
+    match title {
+        Some(title) => {
+            println!("{}", title);
+        }
+        None => {}
+    }
+    Ok(())
 }
 
 pub async fn connect_to_browser() -> Result<(), Box<dyn std::error::Error>> {
@@ -37,13 +51,9 @@ pub async fn connect_to_browser() -> Result<(), Box<dyn std::error::Error>> {
             let page = browser.get_page(event.target_info.target_id.clone()).await;
             match page {
                 Ok(page) => {
-                    let title = page.get_title().await?;
-                    match title {
-                        Some(title) => {
-                            println!("{}", title);
-                        }
-                        None => {}
-                    }
+                    async_std::task::spawn(async move {
+                        let _ = page_ops(page).await;
+                    });
                 }
                 Err(e) => {
                     println!("{}", e)
