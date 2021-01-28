@@ -30,7 +30,7 @@ pub async fn page_ops(page: Page) -> Result<(), Box<dyn std::error::Error>> {
             {
                 text += string.as_str().unwrap();
             }
-            println!("\x1b[0;33m{}\x1b[0m", text); //print text (in orange text) to console
+            println!("\x1b[038;5;178m{}\x1b[0m", text); //print text (in orange text) to console
         }
     });
 
