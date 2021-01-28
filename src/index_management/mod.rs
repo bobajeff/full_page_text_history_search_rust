@@ -1,6 +1,8 @@
 use std::println;
 use std::sync::Arc;
+use futures::{SinkExt, channel::mpsc::channel};
 
+use async_std::task::TaskId;
 use futures::StreamExt;
 use futures::channel::mpsc::Receiver;
 use tantivy::query::QueryParser;
@@ -8,9 +10,11 @@ use tantivy::schema::*;
 use tantivy::{collector::TopDocs, directory::MmapDirectory};
 use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
-use crate::EntryStream;
+use crate::{EntryData, EntryStream};
 
 use super::Entry;
+
+pub mod entry_builder;
 
 pub struct IndexerValues {
     timestamp: Field,
@@ -68,7 +72,8 @@ pub async fn wait_for_write(listener_handle: async_std::task::JoinHandle<()>){
     listener_handle.await;
 }
 
-pub async fn init(rx: Receiver<Entry>) -> tantivy::Result<(IndexerValues, async_std::task::JoinHandle<()>)> {
+pub async fn init(entrystream_receiver: Receiver<(TaskId, EntryData)>) -> tantivy::Result<(IndexerValues, async_std::task::JoinHandle<()>)> {
+    let (tx, rx) = channel(1);
     let mut entries = EntryStream::new(rx);
     let index_path = MmapDirectory::open("./data")?; //if data directory doesn't exist; nothing else is run
     let mut schema_builder = Schema::builder();
@@ -90,6 +95,8 @@ pub async fn init(rx: Receiver<Entry>) -> tantivy::Result<(IndexerValues, async_
     });
 
     let index_values = IndexerValues { timestamp, address, title, text, schema: schema.clone(), index};
+
+    entry_builder::start_entry_manager(entrystream_receiver, tx);
 
     Ok((index_values, listener_handle))
 }

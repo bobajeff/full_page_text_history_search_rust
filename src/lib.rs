@@ -7,12 +7,29 @@ use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::task::Poll;
 use futures::Stream;
 use std::pin::Pin;
+use chrono::prelude::*;
+
+pub use index_management::entry_builder::EntryData;
+
 
 pub struct Entry {
     pub timestamp: i64,
     pub address: &'static str,
     pub title: &'static str,
     pub text: &'static str,
+}
+
+pub struct ProtoEntry {
+    pub timestamp: i64,
+    pub address: String,
+    pub title: String,
+    pub text: String,
+}
+
+impl ProtoEntry {
+    pub fn new() -> Self {
+        Self { timestamp: Local::now().timestamp(), address: "".to_string(), title: "".to_string(), text: "".to_string() }
+    }
 }
 pub struct EntryStream {
     receiver: Receiver<Entry>,
