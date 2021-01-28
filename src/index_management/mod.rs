@@ -33,12 +33,11 @@ pub fn index_document(
     Ok(())
 }
 
-pub fn test_index(index: Index, title: Field, text: Field, schema: Schema) -> tantivy::Result<()>
-{
+pub fn test_index(index: Index, title: Field, text: Field, schema: Schema) -> tantivy::Result<()> {
     let reader = index
-    .reader_builder()
-    .reload_policy(ReloadPolicy::OnCommit)
-    .try_into()?;
+        .reader_builder()
+        .reload_policy(ReloadPolicy::OnCommit)
+        .try_into()?;
 
     let searcher = reader.searcher();
 
@@ -81,9 +80,8 @@ pub fn init() -> tantivy::Result<()> {
     limbs and branches that arch over the pool",
     };
 
-    let _ = index_document(&mut index_writer, entry, schema.clone());
-    let _ = test_index(index, title, text, schema.clone());
-
+    index_document(&mut index_writer, entry, schema.clone())?;
+    test_index(index, title, text, schema.clone())?;
 
     Ok(())
 }
