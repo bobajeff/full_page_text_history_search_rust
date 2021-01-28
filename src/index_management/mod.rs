@@ -1,4 +1,5 @@
 use std::println;
+use std::sync::Arc;
 
 use futures::StreamExt;
 use futures::channel::mpsc::Receiver;
@@ -17,7 +18,7 @@ pub struct IndexerValues {
     title: Field,
     text: Field,
     schema: Schema,
-    index: Index
+    index: Index,
 }
 
 
@@ -38,7 +39,7 @@ pub async fn index_document(
     text => entry.text
     ));
 
-    let result = index_writer.commit(); //this doesn't block
+    let _ = index_writer.commit(); //this doesn't block
     
     Ok(())
 }
@@ -63,7 +64,11 @@ pub fn test_index(index_values: IndexerValues) -> tantivy::Result<()> {
     Ok(())
 }
 
-pub async fn init(rx: Receiver<Entry>) -> tantivy::Result<IndexerValues> {
+pub async fn wait_for_write(listener_handle: async_std::task::JoinHandle<()>){
+    listener_handle.await;
+}
+
+pub async fn init(rx: Receiver<Entry>) -> tantivy::Result<(IndexerValues, async_std::task::JoinHandle<()>)> {
     let mut entries = EntryStream::new(rx);
     let index_path = MmapDirectory::open("./data")?; //if data directory doesn't exist; nothing else is run
     let mut schema_builder = Schema::builder();
@@ -76,14 +81,15 @@ pub async fn init(rx: Receiver<Entry>) -> tantivy::Result<IndexerValues> {
     let index = Index::open_or_create(index_path, schema.clone())?;
     let mut index_writer = index.writer(50_000_000)?;
 
-    let index_values = IndexerValues { timestamp, address, title, text, schema: schema.clone(), index };
-
-    async_std::task::spawn(async move {
+    
+    let schema_b = schema.clone();
+    let listener_handle = async_std::task::spawn(async move {
         while let Some(entry) = entries.next().await {
-            index_document(&mut index_writer, entry, schema.clone()).await;
+            index_document(&mut index_writer, entry, schema_b.clone()).await;
         }
     });
-    // test_index(index, title, text, schema.clone())?;
 
-    Ok(index_values)
+    let index_values = IndexerValues { timestamp, address, title, text, schema: schema.clone(), index};
+
+    Ok((index_values, listener_handle))
 }
