@@ -11,21 +11,45 @@ pub struct Entry {
     text: &'static str,
 }
 
-pub fn index_document(index_writer: &mut IndexWriter, entry: Entry, schema: Schema) -> tantivy::Result<()> 
-{
+pub fn index_document(
+    index_writer: &mut IndexWriter,
+    entry: Entry,
+    schema: Schema,
+) -> tantivy::Result<()> {
     let timestamp = schema.get_field("timestamp").unwrap();
     let address = schema.get_field("address").unwrap();
     let title = schema.get_field("title").unwrap();
     let text = schema.get_field("text").unwrap();
-    
+
     index_writer.add_document(doc!(
-        timestamp => entry.timestamp,
-        address => entry.address,
-        title => entry.title,
-        text => entry.text
-        ));
-    
+    timestamp => entry.timestamp,
+    address => entry.address,
+    title => entry.title,
+    text => entry.text
+    ));
+
     index_writer.commit()?;
+
+    Ok(())
+}
+
+pub fn test_index(index: Index, title: Field, text: Field, schema: Schema) -> tantivy::Result<()>
+{
+    let reader = index
+    .reader_builder()
+    .reload_policy(ReloadPolicy::OnCommit)
+    .try_into()?;
+
+    let searcher = reader.searcher();
+
+    let query_parser = QueryParser::for_index(&index, vec![title, text]);
+    let query = query_parser.parse_query("too green")?;
+    let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
+
+    for (_score, doc_address) in top_docs {
+        let retrieved_doc = searcher.doc(doc_address)?;
+        println!("{}", schema.to_json(&retrieved_doc));
+    }
 
     Ok(())
 }
@@ -42,6 +66,7 @@ pub fn init() -> tantivy::Result<()> {
     let index = Index::open_or_create(index_path, schema.clone())?;
     let mut index_writer = index.writer(50_000_000)?;
 
+    //dummy entry
     let entry = Entry {
         timestamp: Local::now().timestamp(),
         address: "http://www.example.com",
@@ -55,25 +80,10 @@ pub fn init() -> tantivy::Result<()> {
     debris of the winter’s flooding; and sycamores with mottled, white, recumbent \
     limbs and branches that arch over the pool",
     };
-    //dummy entry
+
     let _ = index_document(&mut index_writer, entry, schema.clone());
+    let _ = test_index(index, title, text, schema.clone());
 
-
-    let reader = index
-        .reader_builder()
-        .reload_policy(ReloadPolicy::OnCommit)
-        .try_into()?;
-
-    let searcher = reader.searcher();
-
-    let query_parser = QueryParser::for_index(&index, vec![title, text]);
-    let query = query_parser.parse_query("too green")?;
-    let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
-
-    for (_score, doc_address) in top_docs {
-        let retrieved_doc = searcher.doc(doc_address)?;
-        println!("{}", schema.to_json(&retrieved_doc));
-    }
 
     Ok(())
 }
