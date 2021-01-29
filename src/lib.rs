@@ -3,14 +3,13 @@ pub mod index_management;
 pub use browser_operations::connect_to_browser::connect_to_browser;
 pub use index_management::init;
 
+use chrono::prelude::*;
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::task::Poll;
 use futures::Stream;
 use std::pin::Pin;
-use chrono::prelude::*;
 
 pub use index_management::entry_builder::EntryData;
-
 
 pub struct Entry {
     pub timestamp: i64,
@@ -28,7 +27,12 @@ pub struct ProtoEntry {
 
 impl ProtoEntry {
     pub fn new() -> Self {
-        Self { timestamp: Local::now().timestamp(), address: "".to_string(), title: "".to_string(), text: "".to_string() }
+        Self {
+            timestamp: Local::now().timestamp(),
+            address: "".to_string(),
+            title: "".to_string(),
+            text: "".to_string(),
+        }
     }
 }
 pub struct EntryStream {

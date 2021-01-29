@@ -1,10 +1,10 @@
+use futures::{channel::mpsc::channel, SinkExt};
 use std::println;
 use std::sync::Arc;
-use futures::{SinkExt, channel::mpsc::channel};
 
 use async_std::task::TaskId;
-use futures::StreamExt;
 use futures::channel::mpsc::Receiver;
+use futures::StreamExt;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{collector::TopDocs, directory::MmapDirectory};
@@ -25,7 +25,6 @@ pub struct IndexerValues {
     index: Index,
 }
 
-
 pub async fn index_document(
     index_writer: &mut IndexWriter,
     entry: Entry,
@@ -44,19 +43,23 @@ pub async fn index_document(
     ));
 
     let _ = index_writer.commit(); //this doesn't block
-    
+
     Ok(())
 }
 
 pub fn test_index(index_values: IndexerValues) -> tantivy::Result<()> {
-    let reader = index_values.index
+    let reader = index_values
+        .index
         .reader_builder()
         .reload_policy(ReloadPolicy::OnCommit)
         .try_into()?;
 
     let searcher = reader.searcher();
 
-    let query_parser = QueryParser::for_index(&index_values.index, vec![index_values.title, index_values.text]);
+    let query_parser = QueryParser::for_index(
+        &index_values.index,
+        vec![index_values.title, index_values.text],
+    );
     let query = query_parser.parse_query("too green")?;
     let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
 
@@ -68,11 +71,13 @@ pub fn test_index(index_values: IndexerValues) -> tantivy::Result<()> {
     Ok(())
 }
 
-pub async fn wait_for_write(listener_handle: async_std::task::JoinHandle<()>){
+pub async fn wait_for_write(listener_handle: async_std::task::JoinHandle<()>) {
     listener_handle.await;
 }
 
-pub async fn init(entrystream_receiver: Receiver<(TaskId, EntryData)>) -> tantivy::Result<(IndexerValues, async_std::task::JoinHandle<()>)> {
+pub async fn init(
+    entrystream_receiver: Receiver<(TaskId, EntryData)>,
+) -> tantivy::Result<(IndexerValues, async_std::task::JoinHandle<()>)> {
     let (tx, rx) = channel(1);
     let mut entries = EntryStream::new(rx);
     let index_path = MmapDirectory::open("./data")?; //if data directory doesn't exist; nothing else is run
@@ -86,7 +91,6 @@ pub async fn init(entrystream_receiver: Receiver<(TaskId, EntryData)>) -> tantiv
     let index = Index::open_or_create(index_path, schema.clone())?;
     let mut index_writer = index.writer(50_000_000)?;
 
-    
     let schema_b = schema.clone();
     let listener_handle = async_std::task::spawn(async move {
         while let Some(entry) = entries.next().await {
@@ -94,7 +98,14 @@ pub async fn init(entrystream_receiver: Receiver<(TaskId, EntryData)>) -> tantiv
         }
     });
 
-    let index_values = IndexerValues { timestamp, address, title, text, schema: schema.clone(), index};
+    let index_values = IndexerValues {
+        timestamp,
+        address,
+        title,
+        text,
+        schema: schema.clone(),
+        index,
+    };
 
     entry_builder::start_entry_manager(entrystream_receiver, tx);
 

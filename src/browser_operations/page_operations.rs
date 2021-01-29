@@ -1,8 +1,8 @@
 use async_std::task::TaskId;
+use futures::channel::mpsc::Sender;
 use futures::{SinkExt, StreamExt};
 use std::fs;
 use std::sync::Arc;
-use futures::channel::mpsc::Sender;
 
 use chromiumoxide::Page;
 use chromiumoxide_cdp::cdp::js_protocol::runtime::{AddBindingParams, EventBindingCalled};
@@ -14,12 +14,15 @@ async fn get_eval_string() -> Result<String, Box<dyn std::error::Error>> {
     Ok(return_string)
 }
 
-pub async fn page_ops(page: Page, page_op_id: TaskId, mut sender: Sender<(TaskId, EntryData)>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn page_ops(
+    page: Page,
+    page_op_id: TaskId,
+    mut sender: Sender<(TaskId, EntryData)>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let address = page.url().await?;
     match address {
         Some(address) => {
-            // println!("{}", title);
-            sender.send((page_op_id, EntryData::Address(address))).await;
+            let _ = sender.send((page_op_id, EntryData::Address(address))).await;
         }
         None => {}
     }
@@ -27,8 +30,7 @@ pub async fn page_ops(page: Page, page_op_id: TaskId, mut sender: Sender<(TaskId
     let title = page.get_title().await?;
     match title {
         Some(title) => {
-            // println!("{}", title);
-            sender.send((page_op_id, EntryData::Title(title))).await;
+            let _ = sender.send((page_op_id, EntryData::Title(title))).await;
         }
         None => {}
     }
@@ -44,8 +46,7 @@ pub async fn page_ops(page: Page, page_op_id: TaskId, mut sender: Sender<(TaskId
             for string in array_of_strings.iter() {
                 text += string.as_str().unwrap();
             }
-            sender.send((page_op_id, EntryData::Text(text))).await;
-            // println!("\x1b[038;5;178m{}\x1b[0m", text); //print text (in orange text) to console
+            let _ = sender.send((page_op_id, EntryData::Text(text))).await;
         }
     });
 
