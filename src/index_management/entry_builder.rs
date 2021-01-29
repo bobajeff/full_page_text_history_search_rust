@@ -49,9 +49,9 @@ pub fn start_entry_manager(rx: Receiver<(TaskId, EntryData)>, finished_entry_sen
         while let Some(entry_data) = entry_data_stream.next().await {
             let entry = entries.entry(entry_data.0).or_insert_with(ProtoEntry::new);
             match entry_data.1 {
-                EntryData::Timestamp(timestamp) => {entry.timestamp = timestamp},
-                EntryData::Address(address) => {entry.address = address},
-                EntryData::Title(title) => {entry.title = title},
+                EntryData::Timestamp(timestamp) => {entry.timestamp = timestamp;},
+                EntryData::Address(address) => {entry.address = address;},
+                EntryData::Title(title) => {entry.title = title;},
                 EntryData::Text(text) => {entry.text += &text;}
             }
         }

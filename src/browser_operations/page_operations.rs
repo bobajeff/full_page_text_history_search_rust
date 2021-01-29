@@ -15,10 +15,20 @@ async fn get_eval_string() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn page_ops(page: Page, page_op_id: TaskId, mut sender: Sender<(TaskId, EntryData)>) -> Result<(), Box<dyn std::error::Error>> {
+    let address = page.url().await?;
+    match address {
+        Some(address) => {
+            // println!("{}", title);
+            sender.send((page_op_id, EntryData::Address(address))).await;
+        }
+        None => {}
+    }
+
     let title = page.get_title().await?;
     match title {
         Some(title) => {
-            println!("{}", title);
+            // println!("{}", title);
+            sender.send((page_op_id, EntryData::Title(title))).await;
         }
         None => {}
     }
